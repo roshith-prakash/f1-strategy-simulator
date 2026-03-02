@@ -8,9 +8,10 @@ Skips any country whose folder already exists under datasets/.
 """
 
 import os
+import fastf1
 
-# Reuse the download function from the existing script
-from download_race_data import download_all_years
+# Reuse the download functions from the existing script
+from download_race_data import download_all_years, download_single_year
 
 # All Grand Prix event names that FastF1 can fuzzy-match
 # Covers races from the 2022-2025 calendars
@@ -47,18 +48,35 @@ YEARS = [2022, 2023, 2024, 2025]
 def main():
     datasets_dir = os.path.join(os.path.dirname(__file__), "datasets")
 
+    # Enable cache once
+    cache_dir = os.path.join(os.path.dirname(__file__), "cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    fastf1.Cache.enable_cache(cache_dir)
+
     for country in ALL_RACES:
         safe_name = country.strip().replace(" ", "_")
         country_dir = os.path.join(datasets_dir, safe_name)
+        os.makedirs(country_dir, exist_ok=True)
 
-        # Skip if already downloaded
-        if os.path.isdir(country_dir) and len(os.listdir(country_dir)) > 0:
+        # Figure out which years are missing
+        missing_years = []
+        for year in YEARS:
+            csv_file = os.path.join(country_dir, f"{year}_{safe_name}_Laps.csv")
+            if not os.path.isfile(csv_file):
+                missing_years.append(year)
+
+        if not missing_years:
             print(f"\n{'='*55}")
-            print(f"  ⏭️  Skipping {country} — already downloaded")
+            print(f"  ⏭️  Skipping {country} — all years already downloaded")
             print(f"{'='*55}")
             continue
 
-        download_all_years(country, YEARS)
+        print(f"\n{'='*55}")
+        print(f"  Downloading {country} GP — missing years: {missing_years}")
+        print(f"{'='*55}")
+
+        for year in missing_years:
+            download_single_year(year, country, country_dir)
 
 
 if __name__ == "__main__":
