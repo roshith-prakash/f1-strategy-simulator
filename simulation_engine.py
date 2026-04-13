@@ -400,7 +400,7 @@ class StrategySimulator:
 if __name__ == "__main__":
     # ── CONFIGURE YOUR RUN HERE ──────────────────────────────────────────
     DRIVER = "VER"
-    RACE   = "Italy"          # Australia | Italy | Hungary | Saudi_Arabia
+    RACE   = "Saudi_Arabia"          # Australia | Italy | Hungary | Saudi_Arabia
     YEAR   = 2025
     # ─────────────────────────────────────────────────────────────────────
 
