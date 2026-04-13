@@ -20,26 +20,25 @@ def simulate():
         simulator = StrategySimulator(driver=driver, race=race, year=year)
         simulator.run_race()
         
-        # Prepare leaderboard
+        # Prepare leaderboard with telemetry for each
         leaderboard = []
-        for res in simulator._top_strategies:
+        for i, res in enumerate(simulator._top_strategies):
+            laps_data = res["laps_df"].to_dict(orient="records") if "laps_df" in res else []
             leaderboard.append({
                 "strategy": " → ".join(res["strategy"]),
                 "total_time": res["total_time"],
                 "total_time_str": f"{int(res['total_time'] // 60)}m {res['total_time'] % 60:05.2f}s",
-                "n_pitstops": res["n_pitstops"]
+                "n_pitstops": res["n_pitstops"],
+                "laps": laps_data
             })
-            
-        # Prepare best strategy details
-        laps_df = simulator.best_strategy_laps.copy()
         
-        # Convert to list of dicts for JSON
-        laps_data = laps_df.to_dict(orient="records")
+        # Prepare actual strategy data
+        actual_data = simulator.get_actual_strategy()
         
         return jsonify({
             "success": True,
             "leaderboard": leaderboard,
-            "best_laps": laps_data,
+            "actual": actual_data,
             "config": {
                 "driver": driver,
                 "race": race,

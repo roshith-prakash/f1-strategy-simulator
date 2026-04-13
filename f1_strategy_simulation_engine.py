@@ -94,7 +94,7 @@ class StrategySimulator:
 
     def _load_models(self) -> None:
         """Load both models and their metadata from disk."""
-        print("Loading models…")
+        print("Loading models...")
         self.lt_model = joblib.load(LAPTIME_MODEL_PATH)
         self.lt_meta  = joblib.load(LAPTIME_META_PATH)
         self.td_model = joblib.load(TYREDEG_MODEL_PATH)
@@ -131,7 +131,7 @@ class StrategySimulator:
         for a, b in itertools.permutations(COMPOUNDS, 2):
             strategies.append([a, b])
 
-        # 3-stint (2 pit stops) — repeated compounds allowed (e.g. SOFT→HARD→SOFT)
+        # 3-stint (2 pit stops) — repeated compounds allowed (e.g. SOFT->HARD->SOFT)
         # but never two identical compounds back-to-back
         for combo in itertools.product(COMPOUNDS, repeat=3):
             a, b, c = combo
@@ -232,16 +232,16 @@ class StrategySimulator:
         lap_records: list[dict] = []   # only populated when record_laps=True
 
         while lap_number <= total_laps:
-            # ── 1. Predict lap time ───────────────────────────────────
+            # -- 1. Predict lap time -----------------------------------
             lap_time    = self._predict_laptime(lap_number, tyre_life, current_compound)
             total_time += lap_time
 
-            # ── 2. Predict tyre degradation ───────────────────────────
+            # -- 2. Predict tyre degradation ---------------------------
             deg = self._predict_tyre_deg(
                 lap_number, tyre_life, initial_life, current_compound
             )
 
-            # ── 3. Record this lap ────────────────────────────────────
+            # -- 3. Record this lap ------------------------------------
             if record_laps:
                 lap_records.append(
                     {
@@ -253,7 +253,7 @@ class StrategySimulator:
                     }
                 )
 
-            # ── 4. Pit stop check ─────────────────────────────────────
+            # -- 4. Pit stop check -------------------------------------
             # Pit only when: degradation threshold is crossed, laps remain,
             # AND there is a next compound to switch to.
             # If already on the last compound and deg crosses the threshold,
@@ -299,7 +299,7 @@ class StrategySimulator:
 
         print(
             f"Simulating {len(strategies)} strategies for "
-            f"{self.race} ({self.year}) — driver: {self.driver}…"
+            f"{self.race} ({self.year}) - driver: {self.driver}..."
         )
 
         for strategy in strategies:
@@ -315,13 +315,15 @@ class StrategySimulator:
         all_results.sort(key=lambda r: r["total_time"])
         self._top_strategies = all_results[:TOP_N_STRATEGIES]
 
-        # Re-simulate the winner with full lap-by-lap recording
-        best_detailed = self.simulate_strategy(
-            self._top_strategies[0]["strategy"], record_laps=True
-        )
-        self.best_strategy_laps = best_detailed["laps_df"]
+        # Re-simulate the top 3 winners with full lap-by-lap recording
+        for res in self._top_strategies:
+            detailed = self.simulate_strategy(res["strategy"], record_laps=True)
+            res["laps_df"] = detailed["laps_df"]
 
-        print(f"Done — {len(all_results)} valid strategies evaluated.\n")
+        # Keep a convenient reference to the absolute best
+        self.best_strategy_laps = self._top_strategies[0]["laps_df"]
+
+        print(f"Done - {len(all_results)} valid strategies evaluated.\n")
 
     # ------------------------------------------------------------------
     # Output
@@ -335,7 +337,7 @@ class StrategySimulator:
 
         best = self._top_strategies[0]
 
-        # ── Strategy leaderboard ─────────────────────────────────────
+        # -- Strategy leaderboard -------------------------------------
         print("=" * 62)
         print("         F1 RACE STRATEGY OPTIMISATION RESULTS")
         print("=" * 62)
@@ -347,8 +349,8 @@ class StrategySimulator:
         print("=" * 62)
 
         for rank, result in enumerate(self._top_strategies, start=1):
-            label        = "★ BEST" if rank == 1 else f"  #{rank} "
-            compound_str = " → ".join(result["strategy"])
+            label        = " [BEST]" if rank == 1 else f"  #{rank} "
+            compound_str = " -> ".join(result["strategy"])
             total_time   = result["total_time"]
             mins, secs   = divmod(total_time, 60)
             print(
@@ -357,14 +359,14 @@ class StrategySimulator:
                 f"  |  Pit Stops: {result['n_pitstops']}"
             )
 
-        # ── Per-lap detail for the best strategy ─────────────────────
-        print(f"\n{'─' * 62}")
+        # -- Per-lap detail for the best strategy ---------------------
+        print(f"\n{'-' * 62}")
         print(
             f"  Best Strategy Lap Table : "
-            f"{' → '.join(best['strategy'])}"
+            f"{' -> '.join(best['strategy'])}"
             f"  ({best['n_pitstops']} pit stop(s))"
         )
-        print(f"{'─' * 62}")
+        print(f"{'-' * 62}")
 
         # Format numeric columns for display
         df_display = self.best_strategy_laps.copy()
@@ -373,24 +375,80 @@ class StrategySimulator:
         print(df_display.to_string(index=False))
         print(f"{'=' * 62}\n")
 
-    def save_lap_table(
-        self, filepath: str | Path = "best_strategy_laps.csv"
-    ) -> None:
+    def save_lap_table(self, prefix: str = "strategy_telemetry") -> None:
         """
-        Save the best-strategy lap-by-lap table to a CSV file.
+        Save the telemetry for top-N strategies to CSV files.
 
         Parameters
         ----------
-        filepath : str or Path
-            Destination path (default: 'best_strategy_laps.csv').
+        prefix : str
+            Prefix for filenames (e.g. 'strategy_telemetry_1.csv').
         """
-        if self.best_strategy_laps.empty:
-            print("No lap data available. Call run_race() first.")
+        if not self._top_strategies:
+            print("No strategy data available. Call run_race() first.")
             return
 
-        out = Path(filepath)
-        self.best_strategy_laps.to_csv(out, index=False)
-        print(f"Lap table saved to: {out.resolve()}")
+        for i, res in enumerate(self._top_strategies, start=1):
+            if "laps_df" in res:
+                filepath = Path(f"{prefix}_{i}.csv")
+                res["laps_df"].to_csv(filepath, index=False)
+                print(f"Strategy #{i} table saved to: {filepath.resolve()}")
+
+
+    def get_actual_strategy(self) -> dict | None:
+        """
+        Fetch the actual pit strategy and total time for the driver from local datasets.
+        
+        Returns
+        -------
+        dict or None
+            Keys: strategy (list), total_time (float), total_time_str (str).
+            None if data file or driver not found.
+        """
+        # Path: datasets/{race}/{year}_{race}_Laps.csv
+        data_file = MODEL_DIR / "datasets" / self.race / f"{self.year}_{self.race}_Laps.csv"
+        
+        if not data_file.exists():
+            print(f"Historical data file not found: {data_file}")
+            return None
+            
+        try:
+            df = pd.read_csv(data_file)
+            
+            # Filter for specific driver
+            driver_laps = df[df["Driver"] == self.driver].sort_values("LapNumber").copy()
+            
+            # 0. Filter out wet/intermediate compounds as requested
+            driver_laps = driver_laps[driver_laps["Compound"].isin(COMPOUNDS)].copy()
+            
+            if driver_laps.empty:
+                print(f"No dry compound data found for driver {self.driver} in {data_file}")
+                return None
+
+            # 1. Extract Strategy Sequence
+            # We look at the first lap of each stint to identify the compound sequence
+            strategy_laps = driver_laps.groupby("Stint")["Compound"].first().tolist()
+            
+            # 2. Calculate Total Race Time
+            driver_laps["LapTime_dt"] = pd.to_timedelta(driver_laps["LapTime"], errors="coerce")
+            total_time_td = driver_laps["LapTime_dt"].sum()
+            total_seconds = total_time_td.total_seconds()
+            
+            if total_seconds == 0:
+                return None
+                
+            mins, secs = divmod(total_seconds, 60)
+            
+            return {
+                "strategy": " -> ".join(strategy_laps),
+                "total_time": total_seconds,
+                "total_time_str": f"{int(mins)}m {secs:05.2f}s",
+                "n_pitstops": len(strategy_laps) - 1
+            }
+            
+        except Exception as e:
+            print(f"Error reading historical data: {e}")
+            return None
 
 
 # ---------------------------------------------------------------------------
@@ -398,15 +456,37 @@ class StrategySimulator:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    # ── CONFIGURE YOUR RUN HERE ──────────────────────────────────────────
+    # -- CONFIGURE YOUR RUN HERE ------------------------------------------
     DRIVER = "VER"
     RACE   = "Saudi_Arabia"          # Australia | Italy | Hungary | Saudi_Arabia
-    YEAR   = 2025
-    # ─────────────────────────────────────────────────────────────────────
+    YEAR   = 2024
+    # ---------------------------------------------------------------------
 
     simulator = StrategySimulator(driver=DRIVER, race=RACE, year=YEAR)
     simulator.run_race()
     simulator.get_results()
 
-    # Optional: save the best-strategy lap table to CSV
-    # simulator.save_lap_table(f"{RACE}_{YEAR}_{DRIVER}_best_strategy.csv")
+    # Test actual strategy fetch
+    actual = simulator.get_actual_strategy()
+    if actual:
+        print("\n" + "=" * 62)
+        print("         ACTUAL HISTORICAL RACE RESULTS")
+        print("=" * 62)
+        print(f"  Strategy      : {actual['strategy']}")
+        print(f"  Total Time    : {actual['total_time_str']}")
+        print(f"  Pit Stops     : {actual['n_pitstops']}")
+        print("=" * 62)
+
+        # -- Comparison -------------------------------------------------------
+        if simulator._top_strategies:
+            predicted_seconds = simulator._top_strategies[0]["total_time"]
+            actual_seconds    = actual["total_time"]
+            diff_seconds      = abs(predicted_seconds - actual_seconds)
+            error_pct         = (diff_seconds / actual_seconds) * 100
+
+            print(f"\n  [COMPARISON]")
+            print(f"  Predicted Total : {predicted_seconds:.2f} s")
+            print(f"  Actual Total    : {actual_seconds:.2f} s")
+            print(f"  Difference      : {diff_seconds:.2f} s")
+            print(f"  Error %         : {error_pct:.4f} %")
+            print("=" * 62 + "\n")

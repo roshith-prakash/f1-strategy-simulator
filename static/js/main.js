@@ -62,6 +62,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear previous results
         leaderboardGrid.innerHTML = '';
         lapTableBody.innerHTML = '';
+        const actualContainer = document.getElementById('actual-strategy-container');
+        actualContainer.innerHTML = '';
+
+        // Render Actual Historical Strategy
+        if (data.actual) {
+            actualContainer.innerHTML = `
+                <span class="label">ACTUAL RACE:</span>
+                <span class="value">${data.actual.strategy}</span>
+                <span class="time">${data.actual.total_time_str}</span>
+            `;
+        } else {
+            actualContainer.innerHTML = `<span class="no-data-tag">Historical data not available for this session</span>`;
+        }
 
         // Render Leaderboard Cards
         data.leaderboard.forEach((item, index) => {
@@ -69,7 +82,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const isBest = rank === 1;
             
             const card = document.createElement('div');
-            card.className = `strategy-card ${isBest ? 'best' : ''}`;
+            card.className = `strategy-card ${isBest ? 'best active' : ''}`;
+            card.dataset.index = index;
             
             card.innerHTML = `
                 <div class="card-rank">${rank}</div>
@@ -85,12 +99,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="stat-label">Pit Stops</span>
                     </div>
                 </div>
+                <div class="card-footer">CLICK TO VIEW TELEMETRY</div>
             `;
+
+            card.addEventListener('click', () => {
+                // Update active state
+                document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                
+                // Update Table
+                renderLapTable(item.laps);
+                
+                // Scroll to table smoothly on mobile/small screens
+                if (window.innerWidth < 1024) {
+                    document.querySelector('.telemetry-section').scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+
             leaderboardGrid.appendChild(card);
         });
 
-        // Render Lap Table
-        data.best_laps.forEach(lap => {
+        // Initial render of the best strategy table
+        if (data.leaderboard.length > 0) {
+            renderLapTable(data.leaderboard[0].laps);
+        }
+    }
+
+    function renderLapTable(laps) {
+        lapTableBody.innerHTML = '';
+        laps.forEach(lap => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${lap.Lap}</td>

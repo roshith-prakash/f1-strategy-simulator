@@ -302,12 +302,29 @@ input[type="range"] {
     display: block;
 }
 
-.card-compounds {
-    font-family: var(--f1-font);
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin-bottom: 1.5rem;
+.strategy-card.active {
+    border-color: var(--accent);
+    background-color: rgba(225, 6, 0, 0.05);
+    box-shadow: 0 0 20px rgba(225, 6, 0, 0.1);
 }
+
+.card-footer {
+    margin-top: 1rem;
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-align: center;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+    opacity: 0.6;
+}
+
+.strategy-card.active .card-footer {
+    color: var(--accent);
+    opacity: 1;
+}
+
 
 .card-stats {
     display: flex;
@@ -432,12 +449,50 @@ tr:hover td {
     font-family: var(--f1-font);
 }
 
-.close-btn {
-    margin-top: 2rem;
-    background-color: var(--border);
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    cursor: pointer;
+.close-btn:hover {
+    background-color: var(--text-dim);
+    color: var(--bg-color);
 }
+
+/* Actual Strategy Compact UI */
+.actual-strategy-compact {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background-color: rgba(225, 6, 0, 0.05);
+    border: 1px solid rgba(225, 6, 0, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.actual-strategy-compact .label {
+    font-family: var(--f1-font);
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 1px;
+}
+
+.actual-strategy-compact .value {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.actual-strategy-compact .time {
+    color: var(--text-dim);
+    border-left: 1px solid var(--border);
+    padding-left: 1rem;
+}
+
+.no-data-tag {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-style: italic;
+}
+
