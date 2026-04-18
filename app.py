@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from simulation_engine import StrategySimulator, ALLOWED_RACES, ALLOWED_DRIVERS
+from f1_strategy_simulation_engine import StrategySimulator, ALLOWED_RACES, ALLOWED_DRIVERS
 import pandas as pd
 import numpy as np
 
