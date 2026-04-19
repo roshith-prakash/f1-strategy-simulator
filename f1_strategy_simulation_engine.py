@@ -85,8 +85,8 @@ class StrategySimulator:
             raise ValueError(
                 f"Race '{race}' not recognised. Allowed: {ALLOWED_RACES}"
             )
-        if not isinstance(year, int) or year < 2000:
-            raise ValueError("Year must be an integer >= 2000.")
+        if not isinstance(year, int) or year < 2022:
+            raise ValueError("Year must be an integer >= 2022.")
 
     # ------------------------------------------------------------------
     # Model loading
@@ -132,11 +132,8 @@ class StrategySimulator:
             strategies.append([a, b])
 
         # 3-stint (2 pit stops) — repeated compounds allowed (e.g. SOFT->HARD->SOFT)
-        # but never two identical compounds back-to-back
+        # Identical compounds can also be used back-to-back as long as >=2 types used in total
         for combo in itertools.product(COMPOUNDS, repeat=3):
-            a, b, c = combo
-            if a == b or b == c:
-                continue
             if len(set(combo)) < 2:   # must use ≥ 2 different types overall
                 continue
             strategies.append(list(combo))
@@ -164,6 +161,7 @@ class StrategySimulator:
             "Compound_MEDIUM": int(compound == "MEDIUM"),
             "Compound_SOFT":   int(compound == "SOFT"),
         }
+        
         X = pd.DataFrame([row])[self.lt_feature_cols]
         return float(self.lt_model.predict(X)[0])
 
@@ -277,6 +275,7 @@ class StrategySimulator:
             "total_time": total_time,
             "n_pitstops": n_pitstops,
         }
+
         if record_laps:
             result["laps_df"] = pd.DataFrame(lap_records)
 
@@ -375,26 +374,6 @@ class StrategySimulator:
         print(df_display.to_string(index=False))
         print(f"{'=' * 62}\n")
 
-    def save_lap_table(self, prefix: str = "strategy_telemetry") -> None:
-        """
-        Save the telemetry for top-N strategies to CSV files.
-
-        Parameters
-        ----------
-        prefix : str
-            Prefix for filenames (e.g. 'strategy_telemetry_1.csv').
-        """
-        if not self._top_strategies:
-            print("No strategy data available. Call run_race() first.")
-            return
-
-        for i, res in enumerate(self._top_strategies, start=1):
-            if "laps_df" in res:
-                filepath = Path(f"{prefix}_{i}.csv")
-                res["laps_df"].to_csv(filepath, index=False)
-                print(f"Strategy #{i} table saved to: {filepath.resolve()}")
-
-
     def get_actual_strategy(self) -> dict | None:
         """
         Fetch the actual pit strategy and total time for the driver from local datasets.
@@ -458,7 +437,7 @@ class StrategySimulator:
 if __name__ == "__main__":
     # -- CONFIGURE YOUR RUN HERE ------------------------------------------
     DRIVER = "VER"
-    RACE   = "Saudi_Arabia"          # Australia | Italy | Hungary | Saudi_Arabia
+    RACE   = "Italy"          # Australia | Italy | Hungary | Saudi_Arabia
     YEAR   = 2024
     # ---------------------------------------------------------------------
 
